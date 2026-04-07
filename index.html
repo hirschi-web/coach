@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitCoach">
+<title>FitCoach – KI Ernährungs-Coach</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#09090f;--s1:#111118;--s2:#17171f;--s3:#1e1e2a;--border:#26263a;
+  --accent:#4ade80;--accent2:#22c55e;--blue:#60a5fa;--amber:#f59e0b;--red:#f87171;
+  --text:#e8e8f0;--text2:#9999b8;--muted:#55556a;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+#root{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:500px;margin:0 auto}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex}
+
+/* SETUP */
+#scr-apikey{align-items:center;justify-content:center;padding:40px 28px;gap:28px;text-align:center}
+.brand{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;letter-spacing:-1.5px}
+.brand em{color:var(--accent);font-style:normal}
+.field-group{width:100%;display:flex;flex-direction:column;gap:10px}
+.field-label{font-size:12px;color:var(--text2);text-align:left;margin-bottom:2px}
+input,select,textarea{width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--s2);color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select{appearance:none;cursor:pointer}
+.hint{font-size:12px;color:var(--muted);line-height:1.6}
+.hint a{color:var(--accent);text-decoration:none}
+.btn-primary{width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .2s}
+.btn-primary:active{opacity:.8}
+.btn-secondary{width:100%;padding:13px;border-radius:14px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer}
+
+/* USERS */
+.screen-header{padding:calc(var(--safe-t) + 20px) 20px 16px;background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0}
+.screen-header h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px}
+.screen-header p{font-size:13px;color:var(--muted);margin-top:4px}
+.user-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.user-card{background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.user-card:active{background:var(--s3)}
+.user-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;background:var(--s3)}
+.user-name{font-weight:600;font-size:15px}
+.user-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.add-user-btn{margin:0 16px 12px;padding:14px;border-radius:14px;border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* CREATE */
+.create-body{flex:1;overflow-y:auto;padding:20px 16px calc(var(--safe-b)+20px);display:flex;flex-direction:column;gap:14px}
+.form-section{background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.form-section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.form-row{display:flex;gap:10px}
+.form-row>div{flex:1}
+.diet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.diet-opt{padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--s3);color:var(--text2);font-size:13px;font-family:inherit;cursor:pointer;text-align:center;transition:all .2s}
+.diet-opt.sel{border-color:var(--accent);color:var(--accent);background:rgba(74,222,128,.08)}
+.avatar-grid{display:flex;flex-wrap:wrap;gap:8px}
+.av-btn{font-size:22px;padding:8px;border-radius:10px;border:2px solid transparent;background:var(--s3);cursor:pointer;transition:border-color .15s;line-height:1}
+.av-btn.sel{border-color:var(--accent)}
+
+/* MAIN APP */
+#app-header{background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0;padding-top:var(--safe-t)}
+.app-header-top{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px 10px}
+.app-brand{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.5px}
+.app-brand em{color:var(--accent);font-style:normal}
+.app-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.kcal-block{text-align:right}
+.kcal-big{font-size:22px;font-weight:600;transition:color .3s}
+.kcal-lbl{font-size:10px;color:var(--muted)}
+.macro-strip{display:flex;gap:6px;padding:0 18px 10px}
+.mc{flex:1;background:var(--bg);border-radius:10px;padding:8px 10px;border:1px solid var(--border)}
+.mc-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.mc-val{font-size:13px;font-weight:600}
+.mc-bar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden}
+.mc-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.remaining{font-size:11px;text-align:center;padding-bottom:10px}
+.tabs{display:flex;border-top:1px solid var(--border)}
+.tab{flex:1;padding:10px 0;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+
+/* CHAT */
+#pane-chat{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.quick-bar{display:flex;gap:8px;padding:10px 14px 4px;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.quick-bar::-webkit-scrollbar{display:none}
+.qbtn{white-space:nowrap;padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--s2);color:var(--text2);font-size:12px;font-family:inherit;cursor:pointer;flex-shrink:0}
+.qbtn:active{background:var(--s3);color:var(--text)}
+#msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+#msgs::-webkit-scrollbar{width:3px}
+#msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{display:flex;flex-direction:column}
+.msg.u{align-items:flex-end}
+.msg.a{align-items:flex-start}
+.msg-img{max-width:180px;border-radius:12px;margin-bottom:6px}
+.bubble{max-width:86%;padding:11px 15px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.msg.u .bubble{background:#162844;border-radius:18px 18px 4px 18px}
+.msg.a .bubble{background:var(--s2);border:1px solid var(--border);border-radius:18px 18px 18px 4px}
+.msg-time{font-size:10px;color:var(--muted);margin-top:3px;padding:0 3px}
+.typing{display:flex;align-items:center;gap:5px;padding:12px 14px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:bop 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes bop{0%,80%,100%{transform:scale(.4);opacity:.3}40%{transform:scale(1);opacity:1}}
+#img-prev-wrap{display:none;padding:4px 14px 6px;position:relative}
+#img-prev-wrap img{height:68px;border-radius:10px;border:2px solid var(--accent)}
+.rm-img{position:absolute;top:-2px;right:10px;background:var(--red);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#input-bar{padding:10px 12px calc(var(--safe-b)+10px);background:var(--s1);border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+.cam-btn{width:40px;height:40px;border-radius:11px;border:1px solid var(--border);background:var(--s2);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cam-btn:active{background:var(--s3)}
+#txt{flex:1;padding:10px 13px;border-radius:12px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-size:15px;font-family:inherit;resize:none;outline:none;line-height:1.5;max-height:110px;scrollbar-width:none}
+#txt::placeholder{color:var(--muted)}
+.send-btn{width:40px;height:40px;border-radius:11px;border:none;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;transition:all .2s}
+.send-btn:disabled{background:var(--s2);color:var(--muted);cursor:default}
+
+/* STATS */
+#pane-stats{flex:1;overflow-y:auto;padding:16px 14px calc(var(--safe-b)+16px);display:none;flex-direction:column;gap:12px}
+.card{background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:18px}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px}
+.w-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px}
+.w-track{background:var(--bg);border-radius:8px;height:11px;overflow:hidden}
+.w-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
+.w-current{text-align:center;font-size:14px;font-weight:600;color:var(--accent);margin-top:9px}
+.w-row{display:flex;gap:8px;margin-top:14px}
+.w-row input{flex:1}
+.w-row button{padding:10px 16px;border-radius:10px;border:none;background:var(--accent);color:#000;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.hist-item{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.hist-item:last-child{border-bottom:none}
+.mbar-wrap{margin-bottom:11px}
+.mbar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px}
+.mbar-track{background:var(--bg);border-radius:5px;height:7px;overflow:hidden}
+.mbar-fill{height:100%;border-radius:5px;transition:width .5s}
+.tips{margin-top:14px;padding:13px;background:var(--bg);border-radius:10px;font-size:12px;color:var(--muted);line-height:2}
+
+/* PROFILE */
+#pane-profile{flex:1;overflow-y:auto;padding:16px 14px calc(var(--safe-b)+16px);display:none;flex-direction:column;gap:12px}
+.profile-card{background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center}
+.profile-av-big{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 12px;background:var(--s3)}
+.profile-name-big{font-family:'Syne',sans-serif;font-size:20px;font-weight:800}
+.profile-meta{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.8}
+.menu-item{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.menu-item:active{background:var(--s3)}
+.menu-icon{font-size:20px;width:32px;text-align:center}
+.menu-label{flex:1;font-size:15px}
+.menu-arrow{color:var(--muted);font-size:18px}
+
+/* TOAST */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s3);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <!-- SCREEN 1: API KEY -->
+  <div id="scr-apikey" class="screen active">
+    <div class="brand">Fit<em>Coach</em> 🤖</div>
+    <p style="color:var(--muted);font-size:14px">Dein persönlicher KI Ernährungs- &amp; Fitness-Coach</p>
+    <div class="field-group">
+      <div class="field-label">Anthropic API Key</div>
+      <input type="password" id="inp-apikey" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+      <p class="hint">Kostenlos erstellen auf <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.<br>Wird nur lokal in deinem Browser gespeichert.</p>
+      <button class="btn-primary" onclick="saveApiKey()">Weiter →</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: USER SELECT -->
+  <div id="scr-users" class="screen">
+    <div class="screen-header">
+      <h1>Fit<span style="color:var(--accent)">Coach</span> 🤖</h1>
+      <p>Wer trainiert heute?</p>
+    </div>
+    <div class="user-list" id="user-list"></div>
+    <button class="add-user-btn" onclick="showCreate()">＋ Neues Profil erstellen</button>
+    <button class="btn-secondary" style="margin:0 16px calc(var(--safe-b)+16px);font-size:12px" onclick="changeApiKey()">🔑 API Key ändern</button>
+  </div>
+
+  <!-- SCREEN 3: CREATE PROFILE -->
+  <div id="scr-create" class="screen">
+    <div class="screen-header">
+      <h1>Neues Profil</h1>
+      <p>Deine Daten für den Coach</p>
+    </div>
+    <div class="create-body">
+      <div class="form-section">
+        <div class="form-section-title">👤 Über dich</div>
+        <div><div class="field-label">Name</div><input type="text" id="f-name" placeholder="z.B. Maria"></div>
+        <div class="form-row">
+          <div><div class="field-label">Gewicht (kg)</div><input type="number" id="f-weight" placeholder="75" step="0.1"></div>
+          <div><div class="field-label">Größe (cm)</div><input type="number" id="f-height" placeholder="170"></div>
+        </div>
+        <div class="form-row">
+          <div><div class="field-label">Zielgewicht (kg)</div><input type="number" id="f-target" placeholder="68" step="0.1"></div>
+          <div><div class="field-label">Alter</div><input type="number" id="f-age" placeholder="30"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">🥗 Ernährung</div>
+        <div class="field-label">Ernährungsweise</div>
+        <div class="diet-grid" id="diet-grid">
+          <button class="diet-opt" data-v="vegan" onclick="selectDiet(this)">🌱 Vegan</button>
+          <button class="diet-opt" data-v="pescetarisch" onclick="selectDiet(this)">🐟 Pescetarisch</button>
+          <button class="diet-opt" data-v="vegetarisch" onclick="selectDiet(this)">🥦 Vegetarisch</button>
+          <button class="diet-opt" data-v="alles" onclick="selectDiet(this)">🍖 Alles</button>
+        </div>
+        <div><div class="field-label">Besonderheiten (optional)</div>
+        <input type="text" id="f-diet-notes" placeholder="z.B. keine Eier, Pflanzenmilch, Laktosefrei"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">🏃 Sport & Aktivität</div>
+        <div><div class="field-label">Aktivitätslevel</div>
+          <select id="f-activity">
+            <option value="low">Wenig aktiv (1-2x/Woche)</option>
+            <option value="mid" selected>Mäßig aktiv (3-4x/Woche)</option>
+            <option value="high">Sehr aktiv (5+x/Woche)</option>
+          </select>
+        </div>
+        <div><div class="field-label">Sportarten</div>
+          <input type="text" id="f-sports" placeholder="z.B. Padel, Krafttraining, Laufen"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⏱ Fasten</div>
+        <select id="f-fasting">
+          <option value="kein Fasten">Kein Fasten</option>
+          <option value="16:8" selected>16:8 (täglich)</option>
+          <option value="18:6">18:6 (täglich)</option>
+          <option value="20:4">20:4 / OMAD</option>
+          <option value="flexibel">Flexibel</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">🎨 Avatar wählen</div>
+        <div class="avatar-grid" id="avatar-grid"></div>
+      </div>
+
+      <button class="btn-primary" onclick="createProfile()">Profil speichern ✓</button>
+      <button class="btn-secondary" onclick="showUsers()">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: MAIN APP -->
+  <div id="scr-app" class="screen">
+    <div id="app-header">
+      <div class="app-header-top">
+        <div>
+          <div class="app-brand">Fit<em>Coach</em> 🤖</div>
+          <div class="app-sub" id="hdr-sub">Lade...</div>
+        </div>
+        <div class="kcal-block">
+          <div class="kcal-big" id="hdr-kcal">0</div>
+          <div class="kcal-lbl">/ <span id="hdr-kcal-t">–</span> kcal</div>
+        </div>
+      </div>
+      <div class="macro-strip">
+        <div class="mc">
+          <div class="mc-lbl">Protein</div>
+          <div class="mc-val" id="mc-p" style="color:var(--accent)">0g</div>
+          <div class="mc-bar"><div class="mc-fill" id="mc-p-bar" style="background:var(--accent);width:0%"></div></div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Carbs</div>
+          <div class="mc-val" id="mc-c" style="color:var(--blue)">0g</div>
+          <div class="mc-bar"><div class="mc-fill" id="mc-c-bar" style="background:var(--blue);width:0%"></div></div>
+        </div>
+        <div class="mc">
+          <div class="mc-lbl">Fett</div>
+          <div class="mc-val" id="mc-f" style="color:var(--amber)">0g</div>
+          <div class="mc-bar"><div class="mc-fill" id="mc-f-bar" style="background:var(--amber);width:0%"></div></div>
+        </div>
+      </div>
+      <div class="remaining" id="hdr-rem"></div>
+      <div class="tabs">
+        <button class="tab on" onclick="switchPane('chat',this)">💬 Coach</button>
+        <button class="tab" onclick="switchPane('stats',this)">📈 Stats</button>
+        <button class="tab" onclick="switchPane('profile',this)">👤 Profil</button>
+      </div>
+    </div>
+
+    <div id="pane-chat">
+      <div class="quick-bar" id="quick-bar"></div>
+      <div id="msgs"></div>
+      <div id="img-prev-wrap">
+        <img id="img-prev" src="" alt="">
+        <button class="rm-img" onclick="clearImg()">×</button>
+      </div>
+      <div id="input-bar">
+        <button class="cam-btn" onclick="document.getElementById('file-inp').click()">📷</button>
+        <input type="file" id="file-inp" accept="image/*" capture="environment" style="display:none" onchange="onImage(event)">
+        <textarea id="txt" placeholder="Schreib deinem Coach…" rows="1" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="send()">↑</button>
+      </div>
+    </div>
+
+    <div id="pane-stats">
+      <div class="card">
+        <div class="card-title">⚖️ Gewicht tracken</div>
+        <div class="w-labels"><span>Start: <span id="st-s">–</span>kg</span><span>Ziel: <span id="st-t">–</span>kg</span></div>
+        <div class="w-track"><div class="w-fill" id="st-fill" style="width:0%"></div></div>
+        <div class="w-current" id="st-cur">Noch kein Eintrag</div>
+        <div class="w-row">
+          <input type="number" id="w-inp" placeholder="z.B. 89.4" step="0.1" min="40" max="300">
+          <button onclick="logWeight()">Eintragen</button>
+        </div>
+      </div>
+      <div class="card" id="hist-card" style="display:none">
+        <div class="card-title">📉 Verlauf</div>
+        <div id="hist-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Makros heute</div>
+        <div class="mbar-wrap">
+          <div class="mbar-row"><span>Kalorien</span><span><span id="s-k">0</span> / <span id="s-kt">–</span> kcal</span></div>
+          <div class="mbar-track"><div class="mbar-fill" id="s-k-bar" style="background:var(--blue);width:0%"></div></div>
+        </div>
+        <div class="mbar-wrap">
+          <div class="mbar-row"><span>Protein</span><span><span id="s-p">0</span>g / <span id="s-pt">–</span>g</span></div>
+          <div class="mbar-track"><div class="mbar-fill" id="s-p-bar" style="background:var(--accent);width:0%"></div></div>
+        </div>
+        <div class="mbar-wrap">
+          <div class="mbar-row"><span>Kohlenhydrate</span><span><span id="s-c">0</span>g / <span id="s-ct">–</span>g</span></div>
+          <div class="mbar-track"><div class="mbar-fill" id="s-c-bar" style="background:var(--blue);width:0%"></div></div>
+        </div>
+        <div class="mbar-wrap">
+          <div class="mbar-row"><span>Fett</span><span><span id="s-f">0</span>g / <span id="s-ft">–</span>g</span></div>
+          <div class="mbar-track"><div class="mbar-fill" id="s-f-bar" style="background:var(--amber);width:0%"></div></div>
+        </div>
+        <div class="tips">💡 Tipps:<br>• Trainingstag → etwas mehr Carbs ok<br>• Ruhetag → weniger Carbs, mehr gesunde Fette<br>• Immer: genug Protein für Muskelerhalt</div>
+      </div>
+    </div>
+
+    <div id="pane-profile">
+      <div class="profile-card">
+        <div class="profile-av-big" id="p-av"></div>
+        <div class="profile-name-big" id="p-name"></div>
+        <div class="profile-meta" id="p-meta"></div>
+      </div>
+      <div class="menu-item" onclick="showUsers()"><div class="menu-icon">👥</div><div class="menu-label">Profil wechseln</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="resetToday()"><div class="menu-icon">🔄</div><div class="menu-label">Heutiges Tracking zurücksetzen</div><div class="menu-arrow">›</div></div>
+      <div class="menu-item" onclick="changeApiKey()"><div class="menu-icon">🔑</div><div class="menu-label">API Key ändern</div><div class="menu-arrow">›</div></div>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const AVATARS=['🏓','💪','🏃','🧘','⚽','🚴','🏊','🤸','🌱','🐟','🔥','⚡','🌟','🦁','🎯','🏋️'];
+let apiKey='',users={},activeUid='',activeUser=null,messages=[],imgB64=null,imgUrl=null,loading=false;
+let todayMacros={kcal:0,protein:0,carbs:0,fat:0};
+let selDiet='pescetarisch',selAv='🏓';
+
+const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),del:k=>localStorage.removeItem(k)};
+const todayKey=()=>new Date().toISOString().split('T')[0];
+const nowTime=()=>new Date().toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
+const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function saveUsers(){LS.set('fc_users',users)}
+function loadUsers(){users=LS.get('fc_users')||{}}
+function getUserData(uid){return LS.get('fc_data_'+uid)||{days:{},weight:[]}}
+function saveUserData(uid,data){LS.set('fc_data_'+uid,data)}
+
+window.addEventListener('load',()=>{
+  apiKey=LS.get('fc_apikey')||'';
+  loadUsers();
+  renderAvatarGrid();
+  if(!apiKey){showScreen('scr-apikey');return}
+  const last=LS.get('fc_lastuser');
+  if(last&&users[last]){launchUser(last)}else{showScreen('scr-users');renderUsers()}
+});
+
+function saveApiKey(){
+  const v=document.getElementById('inp-apikey').value.trim();
+  if(!v.startsWith('sk-ant')){toast('❌ Bitte gültigen API Key eingeben');return}
+  apiKey=v;LS.set('fc_apikey',apiKey);loadUsers();showScreen('scr-users');renderUsers();
+}
+function changeApiKey(){LS.del('fc_apikey');document.getElementById('inp-apikey').value='';showScreen('scr-apikey')}
+
+function renderUsers(){
+  const list=document.getElementById('user-list');
+  const ids=Object.keys(users);
+  if(!ids.length){list.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:14px">Noch kein Profil.<br>Erstelle dein erstes Profil! 👆</div>';return}
+  list.innerHTML=ids.map(id=>{
+    const u=users[id];
+    const d=getUserData(id);
+    const wts=d.weight||[];
+    const lat=wts.length?wts[wts.length-1].weight:u.weight;
+    return`<div class="user-card" onclick="launchUser('${id}')"><div class="user-avatar">${u.avatar||'🏃'}</div><div style="flex:1"><div class="user-name">${u.name}</div><div class="user-meta">${lat}kg → Ziel: ${u.targetWeight}kg · ${u.diet}</div></div><div style="color:var(--muted);font-size:18px">›</div></div>`;
+  }).join('');
+}
+function showUsers(){showScreen('scr-users');renderUsers()}
+function showCreate(){
+  selDiet='pescetarisch';selAv='🏓';
+  document.querySelectorAll('.diet-opt').forEach(b=>{b.classList.toggle('sel',b.dataset.v==='pescetarisch')});
+  updateAvGrid();
+  ['f-name','f-weight','f-height','f-target','f-age','f-diet-notes','f-sports'].forEach(id=>document.getElementById(id).value='');
+  showScreen('scr-create');
+}
+function selectDiet(btn){document.querySelectorAll('.diet-opt').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');selDiet=btn.dataset.v}
+function renderAvatarGrid(){
+  const g=document.getElementById('avatar-grid');if(!g)return;
+  g.innerHTML=AVATARS.map(a=>`<button class="av-btn${a===selAv?' sel':''}" data-av="${a}" onclick="pickAv(this,'${a}')">${a}</button>`).join('');
+}
+function updateAvGrid(){document.querySelectorAll('.av-btn').forEach(b=>b.classList.toggle('sel',b.dataset.av===selAv))}
+function pickAv(btn,a){selAv=a;updateAvGrid()}
+
+function calcMacros(u){
+  const bmr=10*u.weight+6.25*u.height-5*u.age+5;
+  const mult={low:1.375,mid:1.55,high:1.725}[u.activity]||1.55;
+  const tdee=Math.round(bmr*mult);
+  const kcal=Math.max(1400,tdee-700);
+  const protein=Math.round(u.weight*1.7);
+  const fat=Math.round(kcal*0.26/9);
+  const carbs=Math.round((kcal-protein*4-fat*9)/4);
+  return{kcal,protein,carbs,fat};
+}
+
+function createProfile(){
+  const name=document.getElementById('f-name').value.trim();
+  const weight=parseFloat(document.getElementById('f-weight').value);
+  const height=parseFloat(document.getElementById('f-height').value);
+  const target=parseFloat(document.getElementById('f-target').value);
+  const age=parseInt(document.getElementById('f-age').value)||30;
+  const activity=document.getElementById('f-activity').value;
+  const sports=document.getElementById('f-sports').value.trim();
+  const dietNotes=document.getElementById('f-diet-notes').value.trim();
+  const fasting=document.getElementById('f-fasting').value;
+  if(!name||isNaN(weight)||isNaN(height)||isNaN(target)){toast('❌ Bitte Name, Gewicht, Größe und Ziel ausfüllen');return}
+  const id='u_'+Date.now();
+  const u={id,name,weight,height,targetWeight:target,age,activity,sports,diet:selDiet,dietNotes,fasting,avatar:selAv};
+  u.macros=calcMacros(u);
+  users[id]=u;saveUsers();launchUser(id);
+}
+
+function buildSystemPrompt(){
+  const u=activeUser,m=u.macros;
+  return`Du bist ein freundlicher, motivierender Ernährungs- und Fitness-Coach namens "Coach". Du betreust ${u.name}.
+
+PROFIL:
+- Startgewicht: ${u.weight}kg, Ziel: ${u.targetWeight}kg
+- Größe: ${u.height}cm, Alter: ${u.age} Jahre
+- Ernährung: ${u.diet}${u.dietNotes?' – '+u.dietNotes:''}
+- Sport: ${u.sports||'nicht angegeben'}
+- Fasten: ${u.fasting}
+- Tägliche Kalorien: ${m.kcal} kcal
+- Makros: ${m.protein}g Protein, ${m.carbs}g Carbs, ${m.fat}g Fett
+
+VERHALTEN:
+- Antworte IMMER auf Deutsch, freundlich und motivierend
+- Frage proaktiv nach wenn etwas unklar ist (Portionsgröße etc.)
+- Gib konkrete Empfehlungen mit Mengenangaben
+- Tracke Kalorien und Makros im Gespräch
+- Vor Sport: Carb-fokussierte Meals empfehlen
+- Nach Sport: Protein-fokussierte Recovery Meals
+- Bei Foto: Kalorien und Makros schätzen, nach Portionsgröße fragen
+- Fastenzeiten respektieren und einhalten
+- Trainingstage: etwas mehr Carbs ok; Ruhetage: weniger Carbs, mehr Fette
+
+FORMAT für Nährwerte (immer wenn du Essen trackst):
+📊 [Lebensmittel]: ~XXX kcal | P: XXg | C: XXg | F: XXg`;
+}
+
+async function callClaude(msgs){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:buildSystemPrompt(),messages:msgs})
+  });
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message);
+  return data.content?.find(b=>b.type==='text')?.text||'(keine Antwort)';
+}
+
+function launchUser(uid){
+  activeUid=uid;activeUser=users[uid];LS.set('fc_lastuser',uid);
+  messages=[];imgB64=null;imgUrl=null;
+  const data=getUserData(uid);
+  const today=todayKey();
+  todayMacros=data.days?.[today]?.macros||{kcal:0,protein:0,carbs:0,fat:0};
+  const m=activeUser.macros;
+  document.getElementById('hdr-sub').textContent=activeUser.name+' 👋';
+  document.getElementById('hdr-kcal-t').textContent=m.kcal;
+  document.getElementById('st-s').textContent=activeUser.weight;
+  document.getElementById('st-t').textContent=activeUser.targetWeight;
+  document.getElementById('s-kt').textContent=m.kcal;
+  document.getElementById('s-pt').textContent=m.protein;
+  document.getElementById('s-ct').textContent=m.carbs;
+  document.getElementById('s-ft').textContent=m.fat;
+  document.getElementById('p-av').textContent=activeUser.avatar;
+  document.getElementById('p-name').textContent=activeUser.name;
+  document.getElementById('p-meta').innerHTML=`${activeUser.weight}kg → ${activeUser.targetWeight}kg Ziel<br>${activeUser.diet} · ${activeUser.fasting}<br>${activeUser.sports||'Sport nicht angegeben'}`;
+  const qb=document.getElementById('quick-bar');
+  const qs=[
+    {l:'🏓 Padel heute',m:'Ich gehe heute Padel spielen. Was soll ich vorher essen?'},
+    {l:'💪 Krafttraining',m:'Ich mache heute Krafttraining. Was soll ich essen?'},
+    {l:'📊 Tagesbilanz',m:'Zeig mir meine heutige Bilanz. Was kann ich noch essen?'},
+    {l:'🌙 Fasten starten',m:'Ich fange jetzt mit dem Fasten an. Letzte Tipps?'},
+    {l:'🥗 Snack-Tipp',m:'Gib mir einen gesunden Snack-Tipp für jetzt.'},
+  ];
+  qb.innerHTML=qs.map(q=>`<button class="qbtn" onclick="quickSend(${JSON.stringify(q.m)})">${q.l}</button>`).join('');
+  document.getElementById('msgs').innerHTML='';
+  updateUI();showScreen('scr-app');switchPane('chat',document.querySelector('.tab'));
+  sendGreeting();
+}
+
+async function sendGreeting(){
+  setLoad(true);
+  const now=new Date();
+  const time=now.toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
+  const day=now.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long'});
+  try{
+    const reply=await callClaude([{role:'user',content:`Es ist ${time} Uhr, ${day}. Begrüße mich kurz mit meinem Namen und frage was heute ansteht. Geh kurz auf mein Fasten-Protokoll ein (${activeUser.fasting}).`}]);
+    addMsg('assistant',reply);
+    messages.push({role:'user',content:`[Begrüßung um ${time}]`});
+    messages.push({role:'assistant',content:reply});
+  }catch(e){addMsg('assistant',`Hey ${activeUser.name}! 💪 Schön dass du da bist. Was steht heute an?`)}
+  setLoad(false);
+}
+
+async function send(){
+  if(loading)return;
+  const text=document.getElementById('txt').value.trim();
+  if(!text&&!imgB64)return;
+  document.getElementById('txt').value='';grow(document.getElementById('txt'));
+  addMsg('user',text,imgUrl);
+  let content;
+  if(imgB64){content=[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgB64}},{type:'text',text:text||'Was ist das für ein Essen? Schätze bitte Kalorien und Makros.'}]}
+  else{const m=activeUser.macros;content=text+`\n\n[System-Info: Heutige Bilanz: ${todayMacros.kcal}/${m.kcal} kcal, P:${todayMacros.protein}g C:${todayMacros.carbs}g F:${todayMacros.fat}g. Budget noch: ${m.kcal-todayMacros.kcal} kcal]`}
+  messages.push({role:'user',content});
+  clearImg();setLoad(true);
+  try{
+    const reply=await callClaude(messages);
+    messages.push({role:'assistant',content:reply});
+    addMsg('assistant',reply);extractMacros(reply);
+  }catch(e){addMsg('assistant','⚠️ Fehler: '+e.message);messages.pop()}
+  setLoad(false);
+}
+
+function quickSend(txt){document.getElementById('txt').value=txt;send()}
+
+function extractMacros(text){
+  const re=/~?(\d+)\s*kcal\s*\|\s*P:\s*(\d+)g\s*\|\s*C:\s*(\d+)g\s*\|\s*F:\s*(\d+)g/gi;
+  let m,a={kcal:0,protein:0,carbs:0,fat:0};
+  while((m=re.exec(text))!==null){a.kcal+=+m[1];a.protein+=+m[2];a.carbs+=+m[3];a.fat+=+m[4]}
+  if(a.kcal>0){
+    todayMacros.kcal+=a.kcal;todayMacros.protein+=a.protein;todayMacros.carbs+=a.carbs;todayMacros.fat+=a.fat;
+    const data=getUserData(activeUid);const today=todayKey();
+    if(!data.days)data.days={};if(!data.days[today])data.days[today]={};
+    data.days[today].macros=todayMacros;saveUserData(activeUid,data);updateUI();
+  }
+}
+
+function updateUI(){
+  if(!activeUser)return;
+  const m=activeUser.macros,t=todayMacros;
+  const pct=(v,max)=>Math.min(100,Math.round(v/max*100));
+  document.getElementById('hdr-kcal').textContent=t.kcal;
+  document.getElementById('hdr-kcal').style.color=t.kcal>m.kcal?'var(--red)':'var(--accent)';
+  document.getElementById('mc-p').textContent=t.protein+'g';document.getElementById('mc-p-bar').style.width=pct(t.protein,m.protein)+'%';
+  document.getElementById('mc-c').textContent=t.carbs+'g';document.getElementById('mc-c-bar').style.width=pct(t.carbs,m.carbs)+'%';
+  document.getElementById('mc-f').textContent=t.fat+'g';document.getElementById('mc-f-bar').style.width=pct(t.fat,m.fat)+'%';
+  const rem=m.kcal-t.kcal;
+  const rb=document.getElementById('hdr-rem');
+  if(rem>0){rb.textContent=`✅ Noch ${rem} kcal verfügbar`;rb.style.color='var(--accent)'}
+  else{rb.textContent=`⚠️ Tageslimit erreicht (+${Math.abs(rem)} kcal)`;rb.style.color='var(--red)'}
+  document.getElementById('s-k').textContent=t.kcal;document.getElementById('s-k-bar').style.width=pct(t.kcal,m.kcal)+'%';
+  document.getElementById('s-p').textContent=t.protein;document.getElementById('s-p-bar').style.width=pct(t.protein,m.protein)+'%';
+  document.getElementById('s-c').textContent=t.carbs;document.getElementById('s-c-bar').style.width=pct(t.carbs,m.carbs)+'%';
+  document.getElementById('s-f').textContent=t.fat;document.getElementById('s-f-bar').style.width=pct(t.fat,m.fat)+'%';
+  const data=getUserData(activeUid),wts=data.weight||[];
+  if(wts.length){
+    const lat=wts[wts.length-1].weight;
+    const total=activeUser.weight-activeUser.targetWeight;
+    const done=activeUser.weight-lat;
+    document.getElementById('st-fill').style.width=Math.max(0,Math.min(100,(done/total)*100))+'%';
+    document.getElementById('st-cur').textContent=`Aktuell: ${lat}kg${done>0?' (−'+done.toFixed(1)+'kg)':''}`;
+    const hc=document.getElementById('hist-card');hc.style.display='flex';
+    document.getElementById('hist-list').innerHTML=wts.slice(-7).reverse().map(e=>`<div class="hist-item"><span style="color:var(--muted)">${e.date}</span><span style="color:var(--accent);font-weight:600">${e.weight}kg</span></div>`).join('');
+  }
+}
+
+function logWeight(){
+  const w=parseFloat(document.getElementById('w-inp').value);
+  if(isNaN(w)||w<40||w>300){toast('❌ Ungültiges Gewicht');return}
+  const data=getUserData(activeUid);if(!data.weight)data.weight=[];
+  data.weight.push({date:todayKey(),weight:w});saveUserData(activeUid,data);
+  document.getElementById('w-inp').value='';updateUI();toast(`✅ ${w}kg eingetragen`);
+  quickSend(`Ich habe heute ${w}kg gewogen.`);
+}
+
+function addMsg(role,text,img){
+  const msgs=document.getElementById('msgs');
+  const div=document.createElement('div');div.className='msg '+(role==='user'?'u':'a');
+  let html='';
+  if(img)html+=`<img class="msg-img" src="${img}">`;
+  html+=`<div class="bubble">${esc(text)}</div><div class="msg-time">${nowTime()}</div>`;
+  div.innerHTML=html;msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+
+function setLoad(v){
+  loading=v;document.getElementById('send-btn').disabled=v;
+  const msgs=document.getElementById('msgs');
+  const ex=document.getElementById('typing-ind');
+  if(v&&!ex){const d=document.createElement('div');d.id='typing-ind';d.className='typing';d.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div>';msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight}
+  else if(!v&&ex)ex.remove();
+}
+
+function onImage(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{imgUrl=ev.target.result;imgB64=imgUrl.split(',')[1];document.getElementById('img-prev').src=imgUrl;document.getElementById('img-prev-wrap').style.display='block'};
+  reader.readAsDataURL(file);e.target.value='';
+}
+function clearImg(){imgB64=null;imgUrl=null;document.getElementById('img-prev-wrap').style.display='none'}
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}}
+function grow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px'}
+
+function switchPane(name,btn){
+  ['chat','stats','profile'].forEach(p=>{const el=document.getElementById('pane-'+p);el.style.display=p===name?'flex':'none'});
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  if(name==='stats'||name==='profile')updateUI();
+}
+
+function resetToday(){
+  if(!confirm('Heutiges Tracking wirklich zurücksetzen?'))return;
+  todayMacros={kcal:0,protein:0,carbs:0,fat:0};
+  const data=getUserData(activeUid);const today=todayKey();
+  if(data.days?.[today])delete data.days[today];
+  saveUserData(activeUid,data);updateUI();toast('✅ Tracking zurückgesetzt');
+}
+
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500)}
+</script>
+</body>
+</html>
